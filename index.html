@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>One Page Report (OPR) WebApp</title>
+  <style>
+    :root {
+      --report-font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* WebApp Top Navbar */
+    .navbar {
+      background-color: #1e293b; border-bottom: 1px solid #334155; padding: 10px 24px;
+      display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100;
+    }
+    .navbar .brand { font-size: 1.15rem; font-weight: bold; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+    .navbar .actions { display: flex; align-items: center; gap: 10px; }
+
+    .lang-select {
+      background-color: #0f172a; color: #38bdf8; border: 1px solid #38bdf8;
+      padding: 6px 10px; border-radius: 6px; font-weight: 600; font-size: 0.85rem; cursor: pointer;
+    }
+
+    /* WebApp Main Layout */
+    .app-body { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 57px); }
+
+    /* Left Control Sidebar */
+    .sidebar {
+      width: 420px; background-color: #1e293b; border-right: 1px solid #334155; padding: 20px;
+      overflow-y: auto; flex-shrink: 0; display: flex; flex-direction: column; gap: 16px;
+    }
+    .card { background-color: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 14px; }
+    .card-title { font-size: 0.9rem; font-weight: bold; color: #38bdf8; margin-bottom: 12px; border-bottom: 1px solid #1e293b; padding-bottom: 6px; }
+    
+    .form-group { margin-bottom: 10px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 600; color: #94a3b8; margin-bottom: 4px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 7px 10px; background-color: #1e293b; border: 1px solid #334155; border-radius: 6px;
+      color: #f8fafc; font-size: 0.82rem; transition: 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none; border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+    .form-group textarea { resize: vertical; height: 60px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+    /* Button Styles */
+    .btn {
+      padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      border: none; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: 0.2s;
+    }
+    .btn-primary { background-color: #0284c7; color: white; }
+    .btn-primary:hover { background-color: #0369a1; }
+    .btn-success { background-color: #16a34a; color: white; }
+    .btn-success:hover { background-color: #15803d; }
+    .btn-secondary { background-color: #334155; color: #f8fafc; }
+    .btn-secondary:hover { background-color: #475569; }
+    .btn-danger { background-color: #dc2626; color: white; }
+    .btn-danger:hover { background-color: #b91c1c; }
+
+    /* Right Preview Canvas */
+    .preview-area {
+      flex: 1; background-color: #020617; padding: 20px; overflow-y: auto;
+      display: flex; justify-content: center; align-items: flex-start;
+    }
+
+    /* A4 Portrait Page Alignment (210mm x 297mm) */
+    .a4-page {
+      width: 210mm; height: 297mm; background-color: #ffffff; color: #000000;
+      padding: 10mm 12mm; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+      display: flex; flex-direction: column; justify-content: space-between; position: relative; flex-shrink: 0;
+    }
+
+    /* 应用动态字体到 A4 页面内部所有元素 */
+    .a4-page, .a4-page * {
+      font-family: var(--report-font) !important;
+    }
+
+    /* Header 区域 */
+    .header-layout { 
+      display: flex; justify-content: center; align-items: center; position: relative; 
+      margin-bottom: 6px; min-height: 65px; 
+    }
+    .header-left { 
+      width: 100%; text-align: center; display: flex; justify-content: center; align-items: center; 
+      padding: 0 70px;
+    }
+    .title-school { 
+      font-size: 17pt; font-weight: bold; color: #000000; margin: 0; line-height: 1.2; text-align: center; 
+    }
+
+    .logo-box { 
+      position: absolute; right: 0; top: 50%; transform: translateY(-50%); 
+      width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; 
+    }
+    .logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+
+    /* Yellow Banner */
+    .banner-opr {
+      background-color: #ffd700; color: #000; text-align: center; font-weight: 900;
+      font-size: 11pt; padding: 2px 0; letter-spacing: 2px; border: 1.5px solid #000; margin-bottom: 6px;
+    }
+
+    /* Program Details Table */
+    .info-table { width: 100%; border-collapse: collapse; border: 1.5px solid #000; margin-bottom: 6px; font-size: 8pt; font-weight: bold; }
+    .info-table td { border: 1px solid #000; padding: 2px 5px; }
+    .label-bg { background-color: #ffffff; color: #000; }
+    .val-text { color: #000000; font-size: 8.5pt; font-weight: bold; }
+
+    /* Dark Blue Header Containers */
+    .box-container { border: 1.5px solid #000; margin-bottom: 6px; }
+    .box-header { background-color: #1e3a8a; color: #ffffff; font-weight: bold; font-size: 8.5pt; padding: 2px 6px; border-bottom: 1px solid #000; letter-spacing: 0.5px; }
+    .box-content { padding: 4px 6px; font-size: 7.5pt; line-height: 1.3; white-space: pre-line; color: #000; min-height: 36px; }
+
+    /* 2x2 Photo Grid Layout */
+    .photos-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 6px; flex: 1; min-height: 0; margin-bottom: 6px; }
+    .photo-cell { border: 1.5px solid #000; background: #f8fafc; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; }
+    .photo-cell img { width: 100%; height: 100%; object-fit: cover; }
+    .photo-ph { color: #94a3b8; font-size: 8pt; font-weight: bold; }
+
+    /* Reporter Footer Box */
+    .pelapor-box { border: 1.5px solid #000; padding: 4px 6px; background-color: #fff; }
+    .pelapor-title { font-size: 8pt; font-weight: bold; color: #000000; text-decoration: underline; margin-bottom: 1px; }
+    .pelapor-name { font-size: 8pt; font-weight: bold; color: #000; }
+    .pelapor-pos { font-size: 7.5pt; font-weight: normal; color: #333; }
+
+    /* Print / PDF Export Styling */
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body { background: white; margin: 0; padding: 0; }
+      .navbar, .sidebar { display: none !important; }
+      .app-body { height: auto; overflow: visible; }
+      .preview-area { padding: 0; background: white; }
+      .a4-page {
+        box-shadow: none; border: none; width: 210mm; height: 297mm;
+        padding: 8mm 10mm; page-break-after: always; page-break-inside: avoid;
+        overflow: hidden;
+      }
+      @page { size: A4 portrait; margin: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      📄 <span id="ui_appTitle">OPR 报告生成器</span>
+    </div>
+    <div class="actions">
+      <!-- 语言选择器 -->
+      <select id="langSelect" class="lang-select" onchange="switchLanguage(this.value)">
+        <option value="zh" selected>中文</option>
+        <option value="ms">Bahasa Melayu</option>
+        <option value="en">English</option>
+      </select>
+      <button class="btn btn-secondary" onclick="saveDraft()"><span id="ui_btnSave">💾 保存草稿</span></button>
+      <button class="btn btn-secondary" onclick="loadDraft()"><span id="ui_btnLoad">📂 加载草稿</span></button>
+      <button class="btn btn-danger" onclick="resetForm()"><span id="ui_btnReset">🔄 重置内容</span></button>
+      <button class="btn btn-success" onclick="window.print()"><span id="ui_btnPrint">🖨️ 打印 / 导出 PDF</span></button>
+    </div>
+  </header>
+
+  <!-- Main WebApp Interface -->
+  <div class="app-body">
+    
+    <!-- Left Sidebar -->
+    <aside class="sidebar">
+      
+      <!-- Font Selection -->
+      <div class="card">
+        <div class="card-title" id="ui_secFont">🎨 字体风格设置</div>
+        <div class="form-group">
+          <label id="ui_lblFont">选择字体风格</label>
+          <select id="fontSelect" onchange="updateFont(this.value)">
+            <!-- Dynamic Font Options -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Preset Selection -->
+      <div class="card">
+        <div class="card-title" id="ui_secPreset">📌 学校活动预设</div>
+        <div class="form-group">
+          <label id="ui_lblPreset">选择活动预设</label>
+          <select id="programSelect" onchange="autoFillProgram()">
+            <!-- Dynamic Multilingual Presets -->
+          </select>
+        </div>
+      </div>
+
+      <!-- School Info -->
+      <div class="card">
+        <div class="card-title" id="ui_secSchool">🏫 学校与校徽设置</div>
+        <div class="form-group">
+          <label id="ui_lblLogo">上传学校 Logo / 校徽</label>
+          <input type="file" id="logoInput" accept="image/*" onchange="loadLogo(event)">
+        </div>
+        <div class="form-group">
+          <label id="ui_lblSchoolName">学校名称</label>
+          <input type="text" id="inputSchoolName" value="SJK (C) CHUNG HUA RANTAU" oninput="updateView()">
+        </div>
+      </div>
+
+      <!-- Activity Details -->
+      <div class="card">
+        <div class="card-title" id="ui_secDetails">📋 活动信息</div>
+        <div class="form-group">
+          <label id="ui_lblTitle">活动名称</label>
+          <input type="text" id="inputTitle" oninput="updateView()">
+        </div>
+        <div class="grid-3">
+          <div class="form-group">
+            <label id="ui_lblDate">日期</label>
+            <input type="text" id="inputTarikh" value="12.02.2026" oninput="updateView()">
+          </div>
+          <div class="form-group">
+            <label id="ui_lblTime">时间</label>
+            <input type="text" id="inputMasa" value="8:00 AM – 12:00 PM" oninput="updateView()">
+          </div>
+          <div class="form-group">
+            <label id="ui_lblInvolvement">参与人员</label>
+            <input type="text" id="inputPenglibatan" oninput="updateView()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Introduction, Objectives & Impact -->
+      <div class="card">
+        <div class="card-title" id="ui_secObjImp">🎯 简介、目标与成效</div>
+        <div class="form-group">
+          <label id="ui_lblPengenalan">活动简介</label>
+          <textarea id="inputPengenalan" oninput="updateView()"></textarea>
+        </div>
+        <div class="form-group">
+          <label id="ui_lblObj">活动目标（至少3项）</label>
+          <textarea id="inputObjektif" style="height: 80px;" oninput="updateView()"></textarea>
+        </div>
+        <div class="form-group">
+          <label id="ui_lblImp">活动成效（至少3项）</label>
+          <textarea id="inputImpak" style="height: 80px;" oninput="updateView()"></textarea>
+        </div>
+      </div>
+
+      <!-- Photos Upload -->
+      <div class="card">
+        <div class="card-title" id="ui_secPhotos">🖼️ 活动照片（4张）</div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label><span class="ui_lblPhotoWord">照片</span> 1</label>
+            <input type="file" id="photo1" accept="image/*" onchange="loadPhoto(event, 1)">
+          </div>
+          <div class="form-group">
+            <label><span class="ui_lblPhotoWord">照片</span> 2</label>
+            <input type="file" id="photo2" accept="image/*" onchange="loadPhoto(event, 2)">
+          </div>
+          <div class="form-group">
+            <label><span class="ui_lblPhotoWord">照片</span> 3</label>
+            <input type="file" id="photo3" accept="image/*" onchange="loadPhoto(event, 3)">
+          </div>
+          <div class="form-group">
+            <label><span class="ui_lblPhotoWord">照片</span> 4</label>
+            <input type="file" id="photo4" accept="image/*" onchange="loadPhoto(event, 4)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Teacher Sign-off -->
+      <div class="card">
+        <div class="card-title" id="ui_secTeacher">✍️ 汇报教师信息</div>
+        <div class="form-group">
+          <label id="ui_lblTeacherName">教师姓名</label>
+          <input type="text" id="inputTeacherName" oninput="updateView()">
+        </div>
+        <div class="form-group">
+          <label id="ui_lblPosition">教师职位</label>
+          <input type="text" id="inputPosition" oninput="updateView()">
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Right Canvas Preview -->
+    <main class="preview-area">
+      <div class="a4-page">
+        
+        <div style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+          
+          <!-- Header -->
+          <div class="header-layout">
+            <div class="header-left">
+              <div class="title-school" id="viewSchoolName">SJK (C) CHUNG HUA RANTAU</div>
+            </div>
+            <div class="logo-box" id="logoBox">
+              <span style="font-size: 7pt; color: #888;">[ 校徽 LOGO ]</span>
+            </div>
+          </div>
+
+          <!-- ONE PAGE REPORT Yellow Banner -->
+          <div class="banner-opr">ONE PAGE REPORT</div>
+
+          <!-- Program Data Table -->
+          <table class="info-table">
+            <tr>
+              <td class="label-bg" style="width: 15%;" id="ui_tblProgram">PROGRAM :</td>
+              <td class="val-text" id="viewTitle" colspan="5">-</td>
+            </tr>
+            <tr>
+              <td class="label-bg" style="width: 15%;" id="ui_tblDate">TARIKH :</td>
+              <td id="viewTarikh" style="width: 20%;">12.02.2026</td>
+              <td class="label-bg" style="width: 12%;" id="ui_tblTime">MASA :</td>
+              <td id="viewMasa" style="width: 23%;">8:00 AM – 12:00 PM</td>
+              <td class="label-bg" style="width: 18%;" id="ui_tblTarget">PENGLIBATAN:</td>
+              <td id="viewPenglibatan">-</td>
+            </tr>
+          </table>
+
+          <!-- PENGENALAN -->
+          <div class="box-container">
+            <div class="box-header" id="ui_headerPengenalan">PENGENALAN</div>
+            <div class="box-content" id="viewPengenalan">-</div>
+          </div>
+
+          <!-- OBJEKTIF -->
+          <div class="box-container">
+            <div class="box-header" id="ui_headerObjektif">OBJEKTIF</div>
+            <div class="box-content" id="viewObjektif">-</div>
+          </div>
+
+          <!-- IMPAK PROGRAM -->
+          <div class="box-container">
+            <div class="box-header" id="ui_headerImpak">IMPAK PROGRAM</div>
+            <div class="box-content" id="viewImpak">-</div>
+          </div>
+
+          <!-- 4 Photos Grid (2x2) -->
+          <div class="photos-grid">
+            <div class="photo-cell" id="box1"><span class="photo-ph">[ 照片 1 ]</span></div>
+            <div class="photo-cell" id="box2"><span class="photo-ph">[ 照片 2 ]</span></div>
+            <div class="photo-cell" id="box3"><span class="photo-ph">[ 照片 3 ]</span></div>
+            <div class="photo-cell" id="box4"><span class="photo-ph">[ 照片 4 ]</span></div>
+          </div>
+
+        </div>
+
+        <!-- PELAPOR PROGRAM Footer -->
+        <div class="pelapor-box">
+          <div class="pelapor-title" id="ui_headerPelapor">PELAPOR PROGRAM</div>
+          <div class="pelapor-name" id="viewTeacherName">-</div>
+          <div class="pelapor-pos" id="viewPosition">-</div>
+        </div>
+
+      </div>
+    </main>
+
+  </div>
+
+<script>
+  let currentLang = 'zh';
+
+  // 多语言 UI 界面词典
+  const i18n = {
+    zh: {
+      appTitle: "OPR 报告生成器",
+      btnSave: "💾 保存草稿",
+      btnLoad: "📂 加载草稿",
+      btnReset: "🔄 重置内容",
+      btnPrint: "🖨️ 打印 / 导出 PDF",
+      secFont: "🎨 字体风格设置",
+      lblFont: "选择字体风格",
+      secPreset: "📌 学校活动预设",
+      lblPreset: "选择活动预设",
+      secSchool: "🏫 学校与校徽设置",
+      lblLogo: "上传学校 Logo / 校徽",
+      lblSchoolName: "学校名称",
+      secDetails: "📋 活动信息",
+      lblTitle: "活动名称",
+      lblDate: "日期",
+      lblTime: "时间",
+      lblInvolvement: "参与人员",
+      secObjImp: "🎯 简介、目标与成效",
+      lblPengenalan: "活动简介",
+      lblObj: "活动目标（至少3项）",
+      lblImp: "活动成效（至少3项）",
+      secPhotos: "🖼️ 活动照片（4张）",
+      lblPhoto: "照片",
+      secTeacher: "✍️ 汇报教师信息",
+      lblTeacherName: "教师姓名",
+      lblPosition: "教师职位",
+      headerPengenalan: "活动简介",
+      headerObjektif: "活动目标",
+      headerImpak: "活动成效",
+      headerPelapor: "汇报教师",
+      tblProgram: "活动名称 :",
+      tblDate: "日期 :",
+      tblTime: "时间 :",
+      tblTarget: "参与人员 :",
+      msgSaveSuccess: "✅ 草稿及图片已保存！",
+      msgSaveError: "⚠️ 保存失败，图片可能过大超越了 LocalStorage 限制。建议使用较小图档。",
+      msgLoadSuccess: "📂 草稿已成功加载！",
+      msgLoadEmpty: "⚠️ 未找到已保存的草稿。",
+      msgConfirmReset: "确定要重置所有内容与图片吗？"
+    },
+    ms: {
+      appTitle: "OPR Generator WebApp",
+      btnSave: "💾 Simpan Draf",
+      btnLoad: "📂 Muat Draf",
+      btnReset: "🔄 Semula",
+      btnPrint: "🖨️ Cetak / PDF",
+      secFont: "🎨 Tetapan Font & Gaya",
+      lblFont: "Pilih Jenis Font",
+      secPreset: "📌 Preset Program Sekolah",
+      lblPreset: "Pilih Preset Aktiviti",
+      secSchool: "🏫 Maklumat Sekolah & Logo",
+      lblLogo: "Muat Naik Logo Sekolah",
+      lblSchoolName: "Nama Sekolah",
+      secDetails: "📋 Maklumat Program",
+      lblTitle: "Nama Program / Aktiviti",
+      lblDate: "Tarikh",
+      lblTime: "Masa",
+      lblInvolvement: "Penglibatan",
+      secObjImp: "🎯 Pengenalan, Objektif & Impak",
+      lblPengenalan: "Pengenalan Program",
+      lblObj: "Objektif Program (Sekurang-kurangnya 3)",
+      lblImp: "Impak Program (Sekurang-kurangnya 3)",
+      secPhotos: "🖼️ Gambar Aktiviti (4 Keping)",
+      lblPhoto: "Gambar",
+      secTeacher: "✍️ Maklumat Pelapor Program",
+      lblTeacherName: "Nama Guru Pelapor",
+      lblPosition: "Jawatan Guru",
+      headerPengenalan: "PENGENALAN",
+      headerObjektif: "OBJEKTIF",
+      headerImpak: "IMPAK PROGRAM",
+      headerPelapor: "PELAPOR PROGRAM",
+      tblProgram: "PROGRAM :",
+      tblDate: "TARIKH :",
+      tblTime: "MASA :",
+      tblTarget: "PENGLIBATAN:",
+      msgSaveSuccess: "✅ Draf berjaya disimpan!",
+      msgSaveError: "⚠️ Gagal menyimpan, saiz imej mungkin terlalu besar.",
+      msgLoadSuccess: "📂 Draf berjaya dimuatkan!",
+      msgLoadEmpty: "⚠️ Tiada draf disimpan dijumpai.",
+      msgConfirmReset: "Adakah anda pasti untuk semula semua kandungan?"
+    },
+    en: {
+      appTitle: "OPR Generator WebApp",
+      btnSave: "💾 Save Draft",
+      btnLoad: "📂 Load Draft",
+      btnReset: "🔄 Reset",
+      btnPrint: "🖨️ Print / Export PDF",
+      secFont: "🎨 Font & Style Settings",
+      lblFont: "Select Font Family",
+      secPreset: "📌 School Activity Presets",
+      lblPreset: "Select Activity Preset",
+      secSchool: "🏫 School Info & Logo",
+      lblLogo: "Upload School Logo",
+      lblSchoolName: "School Name",
+      secDetails: "📋 Activity Details",
+      lblTitle: "Program / Activity Title",
+      lblDate: "Date",
+      lblTime: "Time",
+      lblInvolvement: "Target Audience",
+      secObjImp: "🎯 Introduction, Objectives & Impact",
+      lblPengenalan: "Program Introduction",
+      lblObj: "Program Objectives (Min 3 points)",
+      lblImp: "Program Impact (Min 3 points)",
+      secPhotos: "🖼️ Activity Photos (4 Photos)",
+      lblPhoto: "Photo",
+      secTeacher: "✍️ Reporting Teacher Details",
+      lblTeacherName: "Reporting Teacher Name",
+      lblPosition: "Teacher Designation",
+      headerPengenalan: "INTRODUCTION",
+      headerObjektif: "OBJECTIVES",
+      headerImpak: "PROGRAM IMPACT",
+      headerPelapor: "PROGRAM REPORTED BY",
+      tblProgram: "PROGRAM :",
+      tblDate: "DATE :",
+      tblTime: "TIME :",
+      tblTarget: "TARGET :",
+      msgSaveSuccess: "✅ Draft saved successfully!",
+      msgSaveError: "⚠️ Save failed. The images might be too large for storage.",
+      msgLoadSuccess: "📂 Draft loaded successfully!",
+      msgLoadEmpty: "⚠️ No saved draft found.",
+      msgConfirmReset: "Are you sure you want to reset all contents and photos?"
+    }
+  };
+
+  // 全多语言预设活动数据库 (支持中 / 马 / 英 自动随语言切换)
+  const presets = {
+    // === 节日与文化庆典 ===
+    tahun_baru_cina: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级农历新年庆典", ms: "SAMBUTAN TAHUN BARU CINA PERINGKAT SEKOLAH", en: "SCHOOL LEVEL CHINESE NEW YEAR CELEBRATION" },
+      tarikh: "12.02.2026", masa: "8:00 AM – 12:00 PM",
+      penglibatan: { zh: "全体师生及家协理事", ms: "SEMUA WARGA SEKOLAH & PIBG", en: "ALL SCHOOL MEMBERS & PTA" },
+      pengenalan: {
+        zh: "学校每年举办农历新年庆典，旨在庆祝多元文化，弘扬传统文化美德，并促进各族师生之间的团结与相互理解。",
+        ms: "Sambutan Tahun Baru Cina dianjurkan secara tahunan bagi meraikan kepelbagaian budaya di sekolah serta memupuk semangat perpaduan dan persefahaman dalam kalangan murid pelbagai kaum.",
+        en: "The Chinese New Year celebration is organized annually to honor cultural diversity, uphold traditional values, and foster unity and mutual understanding among multi-racial students and teachers."
+      },
+      objektif: {
+        zh: "• 培养校园内各族师生之间的团结与包容精神。\n• 加深学生对中华传统文化、艺术与风俗习惯的认识。\n• 通过节庆活动增进教师、学生及家长之间的感情交流。",
+        ms: "• Memupuk semangat perpaduan dan toleransi antarkaum dalam kalangan warga sekolah.\n• Mendedahkan murid kepada kebudayaan, tradisi, dan kesenian masyarakat Cina.\n• Mengeratkan hubungan silaturahim antara guru, murid, dan ibu bapa menerusi aktiviti kebudayaan.",
+        en: "• To foster spirit of unity and cultural tolerance among the school community.\n• To expose students to Chinese traditional culture, arts, and customs.\n• To strengthen bond between teachers, students, and parents through festive events."
+      },
+      impak: {
+        zh: "• 学生能够亲身感受并尊重不同种族的文化传统。\n• 校园内展现出和谐温馨的融洽氛围。\n• 各族学生积极参与舞狮与文化表演，提升自信心。",
+        ms: "• Murid dapat memahami dan menghormati kebudayaan kaum lain dengan lebih dekat.\n• Suasana keharmonian dan semangat Muhibbah terpancar dengan jelas di peringkat sekolah.\n• Penglibatan aktif murid pelbagai kaum dalam tarian singa dan persembahan seni.",
+        en: "• Students gain a deeper understanding and appreciation for diverse ethnic traditions.\n• Fosters a united, vibrant, and harmonious atmosphere across the school.\n• Active participation of multi-racial students in lion dances and cultural performances."
+      },
+      teacher: { zh: "黄美玲老师", ms: "PN. WONG MEI LING", en: "MS. WONG MEI LING" },
+      position: { zh: "校级文化活动协调员", ms: "PENYELARAS KEBUDAYAAN SEKOLAH", en: "SCHOOL CULTURAL COORDINATOR" }
+    },
+    yuan_xiao: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "元宵节（元宵猜灯谜）庆典", ms: "SAMBUTAN PERAYAAN CHAP GOH MEI PERINGKAT SEKOLAH", en: "SCHOOL CHAP GOH MEI (LANTERN FESTIVAL) CELEBRATION" },
+      tarikh: "03.03.2026", masa: "8:00 AM – 10:30 AM",
+      penglibatan: { zh: "全体师生", ms: "SEMUA WARGA SEKOLAH", en: "ALL SCHOOL MEMBERS" },
+      pengenalan: {
+        zh: "元宵节庆典作为农历新年的圆满收官活动，旨在让学生体验猜灯谜、品尝汤圆等传统民俗，增进文化认同与节日喜悦。",
+        ms: "Sambutan Chap Goh Mei dianjurkan bagi menandakan penutup tirai Sambutan Tahun Baru Cina serta memupuk kefahaman kebudayaan dan keharmonisan dalam kalangan murid.",
+        en: "The Chap Goh Mei celebration marks the joyful grand finale of the Chinese New Year, fostering cultural appreciation through lantern riddles and tradition."
+      },
+      objektif: {
+        zh: "• 向学生介绍元宵节的文化寓意与民间传统习俗。\n• 通过猜灯谜活动锻炼学生的思维灵敏度与语文能力。\n• 增进各年级学生之间的互动与校园和谐氛围。",
+        ms: "• Memperkenalkan tradisi dan keunikan perayaan Chap Goh Mei kepada warga sekolah.\n• Memupuk semangat integrasi dan persefahaman antarkaum menerusi aktiviti seni kebudayaan.\n• Mengeratkan silaturahim sesama murid menerusi aktiviti teka teki tanglung.",
+        en: "• To introduce the rich heritage and significance of Chap Goh Mei.\n• To enhance critical thinking and language skills via lantern riddle solving.\n• To strengthen friendship and harmony among all students."
+      },
+      impak: {
+        zh: "• 学生对元宵节传统习俗有了更深刻的理解。\n• 猜灯谜环节气氛热烈，思维敏捷度得到有效锻炼。\n• 全校师生在融洽喜庆的气氛中感受中华文化的魅力。",
+        ms: "• Murid memahami keunikan tradisi dan warisan budaya perayaan Chap Goh Mei secara mendalam.\n• Semangat keharmonian dan toleransi antarkaum dapat dipupuk dengan berkesan.\n• Suasana perayaan dimeriahkan dengan aktiviti teka teki dan persembahan seni kebudayaan.",
+        en: "• Students developed a deep understanding of Chap Goh Mei traditions.\n• Lively engagement in riddle-solving boosted language interest.\n• Created a harmonious cultural atmosphere across the school campus."
+      },
+      teacher: { zh: "曾佳薇老师", ms: "PN. CHEN CHIA WEI", en: "MS. CHEN CHIA WEI" },
+      position: { zh: "文化学会负责老师", ms: "PENYELARAS KELAB KEBUDAYAAN", en: "CULTURAL CLUB TEACHER-IN-CHARGE" }
+    },
+    duan_wu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "端午节（赛龙舟与裹粽文化）庆典", ms: "SAMBUTAN FESTIVAL BOT NAGA & DUMPLING (PESTA DUAN WU)", en: "DRAGON BOAT & DUMPLING FESTIVAL (DUAN WU) CELEBRATION" },
+      tarikh: "19.06.2026", masa: "8:00 AM – 11:30 AM",
+      penglibatan: { zh: "全体师生", ms: "SEMUA WARGA SEKOLAH", en: "ALL SCHOOL MEMBERS" },
+      pengenalan: {
+        zh: "端午节庆典旨在让学生了解屈原的爱国主义精神，学习包粽子的传统技艺，体验中华传统节日的深厚文化底蕴。",
+        ms: "Sambutan Pesta Bot Naga (Duan Wu) diadakan bagi mengenali sejarah tradisi pembuatan zongzi (bakchang) serta nilai patriotisme di sebalik perayaan tradisional ini.",
+        en: "The Duan Wu Festival event introduces the historical significance of patriotism, dragon boat races, and traditional rice dumpling wrapping."
+      },
+      objektif: {
+        zh: "• 加深学生对端午节历史由来与屈原爱国精神的认识。\n• 让学生亲自体验传统包粽子技艺，传承非物质文化遗产。\n• 培养学生团结互助与敬老怀古的美德。",
+        ms: "• Mendedahkan murid kepada sejarah dan asal usul penganjuran Pesta Bot Naga.\n• Memperkenalkan tradisi seni pembuatan zongzi tradisional kepada generasi muda.\n• Memupuk nilai murni seperti patriotisme dan keprihatinan masyarakat melalui kisah sejarah.",
+        en: "• To educate students on history of Duan Wu Festival and patriotic values.\n• To preserve traditional culinary art of dumpling wrapping for younger generation.\n• To build team cooperation and historical appreciation."
+      },
+      impak: {
+        zh: "• 学生掌握了基本的包粽子技巧，提高了动手实践能力。\n• 提高了对传统文物的保护意识与爱国情怀。\n• 增进师生在包粽子示范与文化讲座中的互动。",
+        ms: "• Warga sekolah dapat mempelajari warisan kebudayaan dan nilai sejarah perayaan secara langsung.\n• Mengeratkan hubungan silaturahim menerusi sesi demonstrasi pembungkusan zongzi.\n• Meningkatkan pengetahuan am murid mengenai warisan budaya berbilang kaum.",
+        en: "• Students mastered basic dumpling wrapping techniques hands-on.\n• Instilled patriotic spirit and deep appreciation for historical heritage.\n• Enhanced teacher-student bonding through interactive cultural workshops."
+      },
+      teacher: { zh: "李健伟老师", ms: "EN. LEE KIN WAI", en: "MR. LEE KIN WAI" },
+      position: { zh: "历史科小组主任", ms: "PENYELARAS PANITIA SEJARAH", en: "HEAD OF HISTORY SUBJECT" }
+    },
+    zhong_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "中秋节提灯晚会与赏月庆典", ms: "SAMBUTAN PESTA TANGLUNG & KUIH BULAN (MID-AUTUMN FESTIVAL)", en: "MID-AUTUMN & LANTERN NIGHT FESTIVAL CELEBRATION" },
+      tarikh: "25.09.2026", masa: "6:30 PM – 9:30 PM",
+      penglibatan: { zh: "全体师生、家协及社区居民", ms: "SEMUA WARGA SEKOLAH & PIBG", en: "ALL SCHOOL MEMBERS & PTA" },
+      pengenalan: {
+        zh: "中秋提灯晚会旨在弘扬团圆文化，增进家庭与社区的情感纽带，通过提灯游行、品尝月饼与文化表演享受节日喜悦。",
+        ms: "Sambutan Pesta Tanglung dianjurkan bagi meraikan keharmonian, penyatuan keluarga, serta menyemarakkan warisan kebudayaan masyarakat Cina bersama komuniti sekolah.",
+        en: "The Mid-Autumn Festival brings together families, school staff, and community members to celebrate togetherness, mooncakes, and vibrant lantern parades."
+      },
+      objektif: {
+        zh: "• 加深学生对中秋节团圆文化与传说故事的了解。\n• 促进家校合作，建立和谐紧密的社区纽带。\n• 鼓励学生发挥创意制作提灯，传承传统手艺。",
+        ms: "• Memupuk persefahaman dan menghargai kebudayaan perayaan Pesta Tanglung.\n• Mengeratkan hubungan muhibbah dalam kalangan warga sekolah, murid, dan ibu bapa.\n• Menyemarakkan suasana perayaan menerusi acara perarakan tanglung dan persembahan seni.",
+        en: "• To foster appreciation for family unity and cultural heritage.\n• To strengthen home-school partnership and community goodwill.\n• To ignite creativity through homemade lantern showcases."
+      },
+      impak: {
+        zh: "• 提灯游行吸引各族家长与学生踊跃参与，气氛温馨热闹。\n• 增强了学校与家长的沟通与凝聚力。\n• 学生感受到了传统文化的魅力与家庭团聚的温暖。",
+        ms: "• Warga sekolah menikmati kegembiraan perarakan tanglung dan rasa kebersamaan yang erat.\n• Murid mengenali tradisi merasai kuih bulan dan asal usul sejarah perayaan.\n• Hubungan kerjasama antara pihak sekolah dan PIBG menjadi semakin kukuh.",
+        en: "• Overwhelming participation from diverse families created a joyful event.\n• Solidified trust and communication between PTA and school management.\n• Students experienced warmth of cultural unity and creative expression."
+      },
+      teacher: { zh: "陈淑芬老师", ms: "PN. TAN SOOK FUN", en: "MS. TAN SOOK FUN" },
+      position: { zh: "节庆活动协调员", ms: "PENYELARAS SAMBUTAN PERAYAAN", en: "FESTIVAL CELEBRATION COORDINATOR" }
+    },
+    dong_zhi: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "冬至（搓汤圆）文化庆典", ms: "SAMBUTAN PERAYAAN DONGZHI (PESTA KUIH TANGYUAN)", en: "DONGZHI (TANGYUAN CULINARY) FESTIVAL CELEBRATION" },
+      tarikh: "21.12.2026", masa: "8:00 AM – 10:30 AM",
+      penglibatan: { zh: "全体师生", ms: "SEMUA WARGA SEKOLAH", en: "ALL SCHOOL MEMBERS" },
+      pengenalan: {
+        zh: "冬至庆典旨在向学生传授“冬至大如年”的文化寓意，通过亲手搓汤圆，感受团圆、感恩与长一岁的喜悦。",
+        ms: "Sambutan Perayaan Dongzhi dianjurkan bagi memperkenalkan tradisi pembuatan kuih Tangyuan yang melambangkan penyatuan, kesyukuran, dan keharmonian keluarga.",
+        en: "The Dongzhi Festival celebration highlights the cultural symbolism of unity, harmony, and gratitude through hands-on glutinous rice ball (tangyuan) making."
+      },
+      objektif: {
+        zh: "• 普及冬至节气的由来与中华传统食育文化。\n• 培养学生感恩图报与团结同心的美德。\n• 锻炼学生的动手能力，体验搓汤圆的乐趣。",
+        ms: "• Memperkenalkan asal usul dan makna di sebalik perayaan Dongzhi (Solstis Musim Sejuk).\n• Memupuk nilai murni penyatuan, keharmonian, dan rasa bersyukur dalam kalangan murid.\n• Memberi peluang kepada murid mencuba amali penyediaan kuih Tangyuan secara tradisional.",
+        en: "• To educate students on winter solstice significance and culinary culture.\n• To instil core values of togetherness, gratitude, and respect.\n• To develop practical culinary creativity through tangyuan crafting."
+      },
+      impak: {
+        zh: "• 学生成功学会了制作五彩汤圆，享受劳动成果。\n• 深刻理解冬至背后的团圆与感恩价值观。\n• 校园充满了浓厚的节日人情味与和谐欢笑声。",
+        ms: "• Murid menguasai kemahiran asas membuat kuih Tangyuan pelbagai warna secara kreatif.\n• Semangat kekeluargaan dan persahabatan erat dipupuk dalam kalangan warga sekolah.\n• Memelihara warisan seni kuliner tradisional dalam kalangan generasi muda.",
+        en: "• Students successfully crafted colorful glutinous rice balls eagerly.\n• Strengthened bonds of friendship and family values among peers.\n• Preserved traditional culinary art for the younger generation."
+      },
+      teacher: { zh: "黄慧玲老师", ms: "PN. NG WEI LING", en: "MS. NG WEI LING" },
+      position: { zh: "手工与烹饪学会导师", ms: "PENYELARAS KELAB REKACIPTA & KULINER", en: "HANDICRAFT & CULINARY CLUB TEACHER" }
+    },
+
+    // === 各类球类比赛 (独立拆分) ===
+    lan_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级篮球锦标赛", ms: "KEJOHANAN BOLA KERANJANG PERINGKAT SEKOLAH", en: "SCHOOL BASKETBALL TOURNAMENT" },
+      tarikh: "14.05.2026", masa: "8:00 AM – 1:00 PM",
+      penglibatan: { zh: "四、五、六年级学生", ms: "MURID TAHUN 4, 5 & 6", en: "STANDARD 4, 5 & 6 STUDENTS" },
+      pengenalan: {
+        zh: "本校举办篮球锦标赛，旨在推行健康生活方式，提升学生篮球竞技水平，培养团队合作与体育精神。",
+        ms: "Kejohanan bola keranjang dianjurkan bagi memupuk gaya hidup sihat, meningkatkan kemahiran sukan bola keranjang, serta menyemai semangat kesukanan dan kerja berpasukan.",
+        en: "The school basketball tournament is organized to promote a healthy lifestyle, enhance students' basketball skills, and foster teamwork and sportsmanship."
+      },
+      objektif: {
+        zh: "• 挖掘与发掘学生在篮球运动方面的潜能与天赋。\n• 培养团队合作协作能力、纪律性与战术执行力。\n• 促进不同年级学生之间的友谊与体育竞技交流。",
+        ms: "• Mencungkil bakat dan potensi murid dalam permainan bola keranjang.\n• Memupuk semangat kerjasama berpasukan, disiplin, dan strategi permainan.\n• Mengeratkan silaturahim dan integrasi antaramurid pelbagai kelas.",
+        en: "• To identify and nurture students' basketball talents.\n• To foster teamwork, discipline, and strategic game execution.\n• To strengthen friendship and sportsmanship among students."
+      },
+      impak: {
+        zh: "• 学生积极参与篮球运动，提升身体素质与反应敏捷度。\n• 选拔出优秀的学校篮球代表队成员参加县级(MSSD)比赛。\n• 增强学生的集体荣誉感与团队凝聚力。",
+        ms: "• Penglibatan aktif murid meningkatkan ketahanan fizikal dan kelajuan kendiri.\n• Berjaya memilih wakil pemain sekolah yang berkualiti ke kejohanan peringkat MSSD.\n• Meningkatkan semangat kekitaan dan daya juang pasukan.",
+        en: "• Active participation improved students' physical fitness and agility.\n• Successfully selected qualified players to represent the school at MSSD level.\n• Boosted team cohesion and school pride."
+      },
+      teacher: { zh: "张志明老师", ms: "EN. CHONG CHEE MING", en: "MR. CHONG CHEE MING" },
+      position: { zh: "体育主任", ms: "SETIAUSAHA SUKAN", en: "SPORTS SECRETARY" }
+    },
+    yu_mao_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级羽毛球单打与双打锦标赛", ms: "KEJOHANAN BADMINTON PERINGKAT SEKOLAH", en: "SCHOOL BADMINTON CHAMPIONSHIP" },
+      tarikh: "16.05.2026", masa: "8:00 AM – 1:00 PM",
+      penglibatan: { zh: "三至六年级学生", ms: "MURID TAHUN 3 - 6", en: "STANDARD 3 - 6 STUDENTS" },
+      pengenalan: {
+        zh: "羽毛球锦标赛旨在提供专业竞技平台，提高学生的眼手协调能力、体能耐力与单双打对战战术。",
+        ms: "Kejohanan badminton dianjurkan bagi memberikan platform pertandingan rasmi, meningkatkan koordinasi mata-tangan serta ketahanan fizikal murid.",
+        en: "The badminton championship aims to provide an official competition platform, enhancing students' hand-eye coordination and physical endurance."
+      },
+      objektif: {
+        zh: "• 选拔优秀羽毛球苗子代表学校出战县级比赛。\n• 锻炼学生的反应速度、体能爆发力与敏捷度。\n• 培养胜不骄、败不馁的良好体育道德精神。",
+        ms: "• Memilih wakil sekolah berkualiti ke Kejohanan Badminton MSSD.\n• Meningkatkan kelajuan tindak balas, ketahanan dan kelincahan murid.\n• Memupuk sikap kesukanan yang tinggi dan berdisiplin.",
+        en: "• To select top badminton talents for district-level MSSD tournaments.\n• To boost reaction speed, physical endurance, and agility.\n• To instill good sportsmanship and resilience."
+      },
+      impak: {
+        zh: "• 参赛选手展现了高超的球技与顽强的拼搏精神。\n• 成功遴选出男女单双打学校代表队名单。\n• 推动了全校羽毛球运动普及与体育风气。",
+        ms: "• Peserta menampilkan mutu permainan yang tinggi dan semangat pantang menyerah.\n• Berjaya membentuk skuad perseorangan dan beregu sekolah.\n• Menghidupkan budaya sukan badminton di peringkat sekolah.",
+        en: "• Participants displayed high skill levels and perseverance.\n• Successfully formed the school singles and doubles badminton squad.\n• Promoted a active badminton sporting culture school-wide."
+      },
+      teacher: { zh: "林嘉伟老师", ms: "PN. LIM CHIA WEI", en: "MS. LIM CHIA WEI" },
+      position: { zh: "羽毛球学会负责老师", ms: "PENYELARAS KELAB BADMINTON", en: "BADMINTON CLUB COORDINATOR" }
+    },
+    pai_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级排球锦标赛", ms: "KEJOHANAN BOLA TAMPAR PERINGKAT SEKOLAH", en: "SCHOOL VOLLEYBALL TOURNAMENT" },
+      tarikh: "20.05.2026", masa: "8:00 AM – 12:30 PM",
+      penglibatan: { zh: "四、五、六年级学生", ms: "MURID TAHUN 4, 5 & 6", en: "STANDARD 4, 5 & 6 STUDENTS" },
+      pengenalan: {
+        zh: "举办排球比赛旨在培养学生的高空发球、传球、扣杀战术与高度默契的团队配合能力。",
+        ms: "Kejohanan bola tampar bertujuan untuk memupuk kemahiran servang, menghadang, dan kemahiran berpasukan yang mantap dalam kalangan murid.",
+        en: "The volleyball tournament aims to develop serving, blocking, and strong team coordination skills among upper primary students."
+      },
+      objektif: {
+        zh: "• 强化学生的排球基本功与团队传接球战术默契。\n• 培养学生在紧要关头的心理承受力与合作意识。\n• 选拔排球小将加入校队训练营。",
+        ms: "• Menguasai kemahiran asas asakan, hantaran, dan rejaman bola tampar.\n• Memupuk ketahanan mental dan kerjasama pasukan semasa perlawanan.\n• Memilih bakat baharu untuk menyertai skuad bola tampar sekolah.",
+        en: "• To master fundamental volleyball techniques: serve, pass, and spike.\n• To build mental toughness and team cooperation under pressure.\n• To recruit promising talents for the school volleyball squad."
+      },
+      impak: {
+        zh: "• 各队展示了极佳的默契配合与精彩的扣杀防守。\n• 提高了学生的空间判断力与团队信任度。\n• 顺利选拔出优秀代表队参加区级赛事。",
+        ms: "• Pasangan dan pasukan menunjukkan persefahaman amat baik di atas gelanggang.\n• Meningkatkan persepsi ruang dan nilai kepercayaan antara rakan sepasukan.\n• Berjaya memilih calon wakil sekolah ke pertandingan peringkat daerah.",
+        en: "• Teams demonstrated exceptional court synergy and defensive plays.\n• Enhanced spatial awareness and peer trust during matches.\n• Successfully selected school representatives for district competitions."
+      },
+      teacher: { zh: "陈金伟老师", ms: "EN. CHONG KIN WAI", en: "MR. CHONG KIN WAI" },
+      position: { zh: "排球校队教练", ms: "JURULATIH BOLA TAMPAR SEKOLAH", en: "SCHOOL VOLLEYBALL COACH" }
+    },
+    zu_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级五人制/十一人制足球赛", ms: "KEJOHANAN BOLA SEPAK PERINGKAT SEKOLAH", en: "SCHOOL FOOTBALL / FUTSAL CHAMPIONSHIP" },
+      tarikh: "22.05.2026", masa: "8:00 AM – 1:00 PM",
+      penglibatan: { zh: "四、五、六年级学生", ms: "MURID TAHUN 4, 5 & 6", en: "STANDARD 4, 5 & 6 STUDENTS" },
+      pengenalan: {
+        zh: "足球赛旨在提高学生的运球控球、射门技术、体能耐力以及球场上的大局观与战术执行能力。",
+        ms: "Kejohanan bola sepak dianjurkan bagi membina kecergasan fizikal, kemahiran mengawal bola, serta semangat kesukanan melalui permainan bola sepak.",
+        en: "The football championship enhances physical endurance, dribbling skills, and strategic teamwork through pitch competition."
+      },
+      objektif: {
+        zh: "• 普及足球运动，提升学生的下肢力量与有氧耐力。\n• 培养遵守裁判判罚的纪律性与团队战术执行力。\n• 为校级足球队遴选具有潜力的守门员与攻防球员。",
+        ms: "• Meningkatkan tahap kecergasan, kelajuan dan kawalan bola murid.\n• Memupuk sikap berdisiplin serta mematuhi peraturan dan keputusan pengadil.\n• Memilih pemain berpotensi untuk diserapkan ke dalam pasukan sekolah.",
+        en: "• To improve physical fitness, stamina, and ball control capabilities.\n• To instil discipline, rule compliance, and tactical execution.\n• To scout potential players for the school football team."
+      },
+      impak: {
+        zh: "• 赛事精彩纷呈，学生展现了极高昂的拼搏斗志。\n• 建立了纪律严密的校级足球代表队初选名单。\n• 有效培养了学生的团队合作精神与顽强意志。",
+        ms: "• Perlawanan berlangsung rancak dengan semangat juang yang tinggi.\n• Berjaya membentuk senarai awal pemain bakat sukan bola sepak sekolah.\n• Memupuk semangat kerjasama dan ketahanan mental murid.",
+        en: "• High-energy matches showcased intense fighting spirit and skill.\n• Formed a disciplined shortlist for the school football team.\n• Strengthened student perseverance and collective sportsmanship."
+      },
+      teacher: { zh: "法伊扎老师", ms: "EN. AHMAD FAIZAL", en: "MR. AHMAD FAIZAL" },
+      position: { zh: "足球学会负责老师", ms: "PENYELARAS KELAB BOLA SEPAK", en: "FOOTBALL CLUB COORDINATOR" }
+    },
+    gao_er_fu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校园高尔夫球体验与挥杆技能赛", ms: "KEJOHANAN & CABARAN SUKAN GOLF PERINGKAT SEKOLAH", en: "SCHOOL GOLF SKILLS & PUTTING CHALLENGE" },
+      tarikh: "25.05.2026", masa: "8:00 AM – 11:30 AM",
+      penglibatan: { zh: "高年级感兴趣学生", ms: "MURID TAHUN 4, 5 & 6", en: "UPPER PRIMARY STUDENTS" },
+      pengenalan: {
+        zh: "高尔夫球技能赛旨在向学生推广高尔夫这项绅士运动，训练专注力、挥杆掌控力、自我约束与优雅的体育礼仪。",
+        ms: "Pertandingan golf merangsang fokus mental, kawalan hayunan bola, serta etika sukan yang tinggi dalam kalangan murid.",
+        en: "The golf event promotes mental focus, swing control, self-discipline, and gentlemanly sports etiquette among students."
+      },
+      objektif: {
+        zh: "• 普及高尔夫球基本推杆、挥杆动作与比赛规则。\n• 培养学生极高的专注力、情绪管理与沉着冷静的心理素质。\n• 提供多元化体育运动选择，挖掘特色体育人才。",
+        ms: "• Memperkenalkan asas hayunan, pukulan, dan peraturan permainan golf.\n• Memupuk fokus mental yang tinggi, kawalan emosi, dan ketenangan.\n• Mempelbagaikan pilihan sukan untuk bakat murid.",
+        en: "• To introduce basic golf posture, swing techniques, and match rules.\n• To build intense concentration, emotional control, and patience.\n• To diversify sports opportunities and identify specialized athletes."
+      },
+      impak: {
+        zh: "• 学生掌握了基础推杆技巧，提高了专注与耐心。\n• 开拓了学生的体育视野，培养优雅的比赛礼仪。\n• 发现多名具备较强力量控制力的高尔夫球潜能学生。",
+        ms: "• Murid menguasai asas pukulan golf dengan kejituan dan fokus tinggi.\n• Membuka minda murid terhadap kepelbagaian sukan berimpak tinggi.\n• Mengenal pasti beberapa murid yang mempunyai potensi kejuaraan golf.",
+        en: "• Students gained precision, control, and heightened focus.\n• Broadened athletic horizons and promoted proper sporting decorum.\n• Identified promising talents with excellent swing potential."
+      },
+      teacher: { zh: "吴伟祥老师", ms: "EN. NG WEI SIANG", en: "MR. NG WEI SIANG" },
+      position: { zh: "特色体育项目组长", ms: "PENYELARAS SUKAN KHAS", en: "SPECIAL SPORTS COORDINATOR" }
+    },
+    ying_shi_lan_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级英式篮球（Netball）锦标赛", ms: "KEJOHANAN BOLA JARING PERINGKAT SEKOLAH", en: "SCHOOL NETBALL CHAMPIONSHIP" },
+      tarikh: "28.05.2026", masa: "8:00 AM – 12:00 PM",
+      penglibatan: { zh: "四、五、六年级女学生", ms: "MURID PEREMPUAN TAHUN 4, 5 & 6", en: "FEMALE STUDENTS (STD 4-6)" },
+      pengenalan: {
+        zh: "英式篮球锦标赛专为女学生设计，旨在提高控球定位传球、无球跑位战术、投篮精准度与团队无缝配合。",
+        ms: "Kejohanan bola jaring diadakan khas untuk murid perempuan bagi meningkatkan kemahiran hantaran, pergerakan bebas, dan ketepatan jaringan.",
+        en: "The netball championship offers female students an opportunity to hone ball passing accuracy, court positioning, and teamwork."
+      },
+      objektif: {
+        zh: "• 选拔优秀女运动员组建学校英式篮球队。\n• 提高女学生的敏捷度、弹跳力与快速定位传球能力。\n• 培养严密的团队防守与进攻战术协同。",
+        ms: "• Memilih bakat atlet perempuan untuk pasukan bola jaring sekolah.\n• Meningkatkan kelincahan, daya lompatan, dan ketepatan hantaran murid.\n• Memupuk persefahaman taktik serangan dan pertahanan.",
+        en: "• To recruit promising female athletes for the school netball team.\n• To enhance agility, leaping power, and rapid passing precision.\n• To cultivate seamless team defense and offensive coordination."
+      },
+      impak: {
+        zh: "• 参赛女学生展现了极佳的体能与无球跑位战术素养。\n• 成功组建了备战区级 MSSD 比赛的英式篮球代表队。\n• 极大增强了女学生对体育竞技的兴趣与自信心。",
+        ms: "• Murid perempuan menunjukkan kelincahan dan koordinasi padu.\n• Berjaya membentuk skuad bola jaring sekolah ke MSSD.\n• Meningkatkan minat dan keyakinan murid perempuan dalam sukan.",
+        en: "• Players displayed exceptional agility and court strategy.\n• Successfully formed the school netball squad for district MSSD.\n• Boosted confidence and sports participation among female students."
+      },
+      teacher: { zh: "甘玉兰老师", ms: "PN. GAN YOK LAN", en: "MS. GAN YOK LAN" },
+      position: { zh: "英式篮球负责老师", ms: "PENYELARAS KELAB BOLA JARING", en: "NETBALL CLUB COORDINATOR" }
+    },
+
+    // === 新增竞技比赛 (体操、赛跑、铅球) ===
+    ti_cao: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级体操与竞技体操表演赛", ms: "KEJOHANAN & PERTANDINGAN GIMNASTIK PERINGKAT SEKOLAH", en: "SCHOOL GYMNASTICS COMPETITION" },
+      tarikh: "02.06.2026", masa: "8:00 AM – 11:30 AM",
+      penglibatan: { zh: "一至六年级学生", ms: "SEMUA MURID TAHUN 1 - 6", en: "ALL STANDARD 1 - 6 STUDENTS" },
+      pengenalan: {
+        zh: "体操比赛旨在展现学生的身体柔韧性、平衡感、力量掌控与动作韵律美，培养健康的姿态与身体协调性。",
+        ms: "Pertandingan gimnastik diadakan bagi mengetengahkan kelembutan fizikal, imbangan badan, keanggunan pergerakan, dan koordinasi murid.",
+        en: "The gymnastics competition showcases physical flexibility, balance, core strength, and graceful bodily coordination."
+      },
+      objektif: {
+        zh: "• 锻炼学生的柔韧性、核心力量、平衡力与身体姿态美。\n• 克服恐惧感，培养坚韧不拔与勇于挑战高难度动作的精神。\n• 选拔具备体操潜能的苗子进行专项培养。",
+        ms: "• Meningkatkan kelenturan badan, kekuatan teras, dan imbangan fizikal.\n• Memupuk keberanian dan keyakinan mempersembahkan gerakan sukaran.\n• Mencungkil bakat gimnastik awal untuk latihan berfokus.",
+        en: "• To develop body flexibility, core stability, and graceful poise.\n• To overcome fear and build courage for complex routines.\n• To spot young gymnastic talents for specialized training."
+      },
+      impak: {
+        zh: "• 选手们完成了高标准的自由体操与平衡难度动作。\n• 有效改善了学生的坐姿与身体体态平衡。\n• 发现了多名在柔韧度与韵律感方面表现突出的选手。",
+        ms: "• Peserta berjaya mempersembahkan gerakan gimnas dengan selamat dan yakin.\n• Postur badan dan ketahanan teras murid bertambah baik.\n• Mengenal pasti murid yang mempunyai daya kelenturan yang cemerlang.",
+        en: "• Competitors safely performed impressive balance and floor routines.\n• Improved overall posture and physical core control of participants.\n• Successfully identified students with outstanding flexibility."
+      },
+      teacher: { zh: "吴伟玲老师", ms: "PN. NG WEI LING", en: "MS. NG WEI LING" },
+      position: { zh: "体操学会导师", ms: "PENYELARAS KELAB GIMNASTIK", en: "GYMNASTICS CLUB ADVISOR" }
+    },
+    sai_pao: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级田径赛跑（100米 / 200米 / 接力赛）", ms: "KEJOHANAN ACARA LARIAN & SPRINT PERINGKAT SEKOLAH", en: "SCHOOL TRACK & SPRINTING CHAMPIONSHIP" },
+      tarikh: "10.06.2026", masa: "8:00 AM – 12:00 PM",
+      penglibatan: { zh: "一至六年级学生", ms: "SEMUA MURID TAHUN 1 - 6", en: "ALL STANDARD 1 - 6 STUDENTS" },
+      pengenalan: {
+        zh: "田径赛跑比赛旨在测试学生的爆发力、直线奔跑速度与接力合作默契，是校园田径运动的核心项目。",
+        ms: "Acara larian dan sprint dianjurkan bagi menguji kepantasan, kelajuan, dan semangat kerjasama dalam acara lari bertabur/ganti-ganti.",
+        en: "The track sprinting event tests explosive speed, acceleration, and baton-passing team synergy."
+      },
+      objektif: {
+        zh: "• 选拔校园“短跑王”与4x100米接力队代表。\n• 提升学生的无氧耐力、起跑反应速度与下肢爆发力。\n• 培养顽强拼搏与终点冲刺的意志品质。",
+        ms: "• Memilih pelari terpantas dan skuad lari berpecut 4x100m sekolah.\n• Meningkatkan kelajuan tindak balas, kuasa pecutan dan ketahanan.\n• Memupuk daya juang tinggi sehingga ke garisan penamat.",
+        en: "• To select the fastest sprinters and 4x100m relay team for school.\n• To boost reaction time, stride frequency, and explosive speed.\n• To instil relentless drive towards the finish line."
+      },
+      impak: {
+        zh: "• 赛事气氛热烈，打破多项校级短跑纪录。\n• 成功组建了实力强劲的校级田径接力短跑队。\n• 极大地激发了全校学生参与跑步锻炼的积极性。",
+        ms: "• Suasana kejohanan amat meriah dengan beberapa rekod sekolah diatasi.\n• Skuad larian berpecut sekolah berjaya dibentuk dengan mantap.\n• Menyemarakkan amalan amalan berlari dalam kalangan murid.",
+        en: "• Exhilarating atmosphere with multiple school records broken.\n• Formed a formidable sprinting team for MSSD athletics.\n• Inspired active running habits among all students."
+      },
+      teacher: { zh: "李志明老师", ms: "EN. LEE CHEE MING", en: "MR. LEE CHEE MING" },
+      position: { zh: "田径队主教练", ms: "JURULATIH UTAMA OLAHRAGA", en: "HEAD ATHLETICS COACH" }
+    },
+    diu_qian_qiu: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级田径丢铅球（Shot Put）竞技赛", ms: "PERTANDINGAN LONTAR PELURU PERINGKAT SEKOLAH", en: "SCHOOL SHOT PUT FIELD COMPETITION" },
+      tarikh: "12.06.2026", masa: "8:30 AM – 11:30 AM",
+      penglibatan: { zh: "四、五、六年级学生", ms: "MURID TAHUN 4, 5 & 6", en: "STANDARD 4, 5 & 6 STUDENTS" },
+      pengenalan: {
+        zh: "丢铅球竞技赛旨在训练学生的上肢推力、核心扭转力量、发力角度控制与安全竞技意识。",
+        ms: "Pertandingan lontar peluru dianjurkan bagi membina kekuatan bahagian atas badan, teknik lontaran yang betul, serta tahap keselamatan tinggi.",
+        en: "The shot put competition focuses on upper body strength, explosive core power, proper throwing technique, and safety."
+      },
+      objektif: {
+        zh: "• 传授标准的推铅球动作规范与安全竞技规则。\n• 增强学生的爆发力、手臂力量与核心协调能力。\n• 遴选铅球专项运动员代表学校出战。",
+        ms: "• Mengajar teknik lontaran peluru yang betul dan selamat.\n• Membina kekuatan otot tangan, bahu, dan teras badan.\n• Memilih wakil sekolah bagi acara padang lontar peluru.",
+        en: "• To teach correct shot put pushing techniques and safety protocol.\n• To build upper body, shoulder, and core explosive strength.\n• To select qualified representatives for field events."
+      },
+      impak: {
+        zh: "• 选手们在安全规范下推出了理想的好成绩。\n• 增强了高年级学生的体能爆发力与力量素质。\n• 选拔出2名成绩优异的选手备战县级田径赛。",
+        ms: "• Peserta Berjaya melakukan lontaran mengikut peraturan teknikal.\n• Tahap kekuatan fizikal dan koordinasi murid meningkat.\n• Dua orang murid terpilih ke kem latihan MSSD bagi acara padang.",
+        en: "• Participants achieved commendable distances under safe procedures.\n• Enhanced physical power and shoulder strength among upper primary.\n• Selected 2 top throwers for the MSSD athletics training camp."
+      },
+      teacher: { zh: "张志明老师", ms: "EN. CHONG CHEE MING", en: "MR. CHONG CHEE MING" },
+      position: { zh: "田径田赛项目负责人", ms: "PENYELARAS ACARA PADANG", en: "FIELD EVENTS COORDINATOR" }
+    },
+
+    // === 倡议与艺术比赛 ===
+    anti_dadah_rokok: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "反毒品反香烟/电子烟填色及海报设计比赛", ms: "PERTANDINGAN MEWARNA & MELUKIS POSTER ANTI-DADAH & ANTI-ROKOK", en: "ANTI-DRUG & ANTI-SMOKING POSTER DESIGN COMPETITION" },
+      tarikh: "22.07.2026", masa: "8:30 AM – 11:00 AM",
+      penglibatan: { zh: "一至六年级全体学生", ms: "SEMUA MURID TAHUN 1 - 6", en: "ALL STANDARD 1 - 6 STUDENTS" },
+      pengenalan: {
+        zh: "本活动由防毒教育组（PPDa）主办，通过绘画与填色形式，提高学生对毒品、香烟与电子烟危害的警惕意识，倡导无毒健康校园。",
+        ms: "Kempen PPDa menganjurkan pertandingan ini bagi memberi pendedahan awal mengenai bahaya penyalahgunaan dadah, rokok, dan vape demi kesihatan tubuh badan.",
+        en: "Organized by the Anti-Drug Education Unit (PPDa), this art contest educates students on the dangers of drugs, cigarettes, and vaping."
+      },
+      objektif: {
+        zh: "• 深刻认识毒品、电子烟与香烟对人体健康的巨大危害。\n• 鼓励学生用艺术图画表达拒绝毒品、拥抱健康的决心。\n• 打造安全无毒、积极向上的校园环境。",
+        ms: "• Memberi kesedaran kepada murid mengenai bahaya dadah, vape, dan rokok terhadap kesihatan.\n• Mendorong kreativiti murid menyampaikan mesej hidup sihat menerusi seni lukisan poster.\n• Memupuk budaya sekolah sihat dan bebas daripada pengaruh bahan terlarang.",
+        en: "• To raise awareness on negative impacts of drugs, tobacco, and vaping.\n• To express healthy lifestyle advocacy through creative poster designs.\n• To build a safe, drug-free school environment."
+      },
+      impak: {
+        zh: "• 学生通过创作深刻记住了反毒反烟警示名言与危害。\n• 优秀的画作展示于防毒壁报栏，起到良好宣传效果。\n• 巩固了无烟无毒校园的良好氛围。",
+        ms: "• Murid memahami kesan buruk najis dadah dan rokok menerusi mesej visual poster.\n• Hasil karya melukis dan mewarna poster murid dipamerkan di papan kenyataan PPDa.\n• Mewujudkan persekitaran sekolah sihat, selamat, dan bebas daripada amalan merokok.",
+        en: "• Students internalized anti-drug messages through visual arts.\n• Top artworks showcased on PPDa notice boards for awareness.\n• Reinforced a smoke-free and healthy environment across school."
+      },
+      teacher: { zh: "甘玉兰老师", ms: "PN. GAN YOK LAN", en: "MS. GAN YOK LAN" },
+      position: { zh: "防毒教育(PPDa)及辅导老师", ms: "GURU PENYELARAS PPDA & KAUNSELING", en: "ANTI-DRUG EDUCATION & COUNSELING TEACHER" }
+    },
+    anti_aedes: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "反黑斑蚊防骨痛热症填色及海报设计比赛", ms: "PERTANDINGAN MEWARNA & MELUKIS POSTER CEGAH DENGGI (#ANTI-AEDES)", en: "ANTI-AEDES & DENGUE PREVENTION POSTER COMPETITION" },
+      tarikh: "11.08.2026", masa: "8:30 AM – 11:00 AM",
+      penglibatan: { zh: "一至六年级全体学生", ms: "SEMUA MURID TAHUN 1 - 6", en: "ALL STANDARD 1 - 6 STUDENTS" },
+      pengenalan: {
+        zh: "防骨痛热症运动旨在通过创意宣传画，提醒学生定期清理积水容器，杜绝黑斑蚊滋生，消灭骨痛热症隐患。",
+        ms: "Kempen Pencegahan Demam Denggi dijalankan bagi meningkatkan kesedaran murid mengenai bahaya pembiakan nyamuk Aedes di kawasan persekitaran sekolah dan rumah.",
+        en: "The Dengue Prevention Campaign engages students through art to raise awareness on eliminating Aedes mosquito breeding sites."
+      },
+      objektif: {
+        zh: "• 传授消灭黑斑蚊滋生温床（消灭10分钟）的实用常识。\n• 培养学生保持校园与家庭环境卫生的良好习惯。\n• 发掘学生在公益宣传画创作方面的艺术才华。",
+        ms: "• Mendidik murid mengenai langkah-langkah pencegahan pembiakan nyamuk Aedes.\n• Menyemai kebiasaan menjaga kebersihan persekitaran sekolah dan kawasan kediaman.\n• Mengembangkan kreativiti murid dalam mereka cipta poster mesej pencegahan denggi.",
+        en: "• To educate students on steps to prevent Aedes mosquito breeding.\n• To instill cleanliness habits at school and home environments.\n• To nurture artistic talent for community health advocacy."
+      },
+      impak: {
+        zh: "• 学生提高了对骨痛热症症状与防蚊措施的认知。\n• 校园积水死角得到全面清理，保持无蚊环境。\n• 学生化身为家庭中的“小防蚊宣传员”。",
+        ms: "• Kesedaran murid terhadap bahaya demam denggi dan pembiakan nyamuk Aedes meningkat.\n• Kawasan persekitaran sekolah kekal bersih dan bebas daripada tempat pembiakan nyamuk.\n• Murid memainkan peranan aktif sebagai agen kesedaran kebersihan di rumah masing-masing.",
+        en: "• Elevated student alertness towards dengue symptoms and prevention.\n• Maintained a clean, mosquito-free school surrounding.\n• Students became active cleanliness ambassadors at home."
+      },
+      teacher: { zh: "法伊扎老师", ms: "EN. AHMAD FAIZAL", en: "MR. AHMAD FAIZAL" },
+      position: { zh: "小小医生学会导师", ms: "PENYELARAS KELAB DOKTOR MUDA", en: "DOCTOR MUDA CLUB COORDINATOR" }
+    },
+    lantern_making: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "中秋节制作环保灯笼（废品利用）比赛", ms: "PERTANDINGAN MEMBUAT TANGLUNG MESRA ALAM (BAHAN TERBUANG)", en: "ECO-FRIENDLY RECYCLED LANTERN MAKING CONTEST" },
+      tarikh: "23.09.2026", masa: "8:00 AM – 11:30 AM",
+      penglibatan: { zh: "全体学生及家长", ms: "SEMUA MURID & IBU BAPA", en: "STUDENTS & PARENTS" },
+      pengenalan: {
+        zh: "环保灯笼制作比赛将3R环保理念与中秋传统巧妙结合，鼓励利用塑料瓶、旧报纸等废弃物变废为宝，制作创意灯笼。",
+        ms: "Pertandingan Membuat Tanglung Mesra Alam dijalankan bagi menggabungkan amalan kitar semula dengan perayaan Pesta Tanglung menerusi reka cipta bahan terbuang.",
+        en: "Combines 3R recycling practices with Mid-Autumn traditions by transforming discarded items like plastic bottles into creative lanterns."
+      },
+      objektif: {
+        zh: "• 推广3R（减少、再利用、再循环）爱护地球理念。\n• 激发学生的动手创新思维与废品改造能力。\n• 促进亲子协作，增进家庭和谐纽带。",
+        ms: "• Menggalakkan amalan 3R (Reduce, Reuse, Recycle) menerusi reka cipta bahan terbuang.\n• Memupuk kreativiti dan inovasi murid serta kerjasama erat antara murid dan ibu bapa.\n• Mengukuhkan apresiasi budaya Pesta Tanglung dengan pendekatan mesra alam sekitar.",
+        en: "• To advocate 3R (Reduce, Reuse, Recycle) eco-friendly habits.\n• To trigger inventive design thinking and green crafting.\n• To strengthen parent-child collaboration and family joy."
+      },
+      impak: {
+        zh: "• 展出了上百件巧夺天工的环保手工灯笼作品。\n• 显著增强了学生的环保节约意识与审美情趣。\n• 家长与孩子在共同制作中享受了美好的亲子时光。",
+        ms: "• Pelbagai seni tanglung kreatif yang diperbuat daripada bahan terbuang berjaya dihasilkan.\n• Kesedaran pemeliharaan alam sekitar dan pemikiran reka cipta murid bertambah mantap.\n• Kerjasama yang erat terjalin antara murid, keluarga, dan pihak sekolah.",
+        en: "• Produced a wide array of stunning, innovative recycled lanterns.\n• Deepened students' environmental awareness and resourcefulness.\n• Solidified family ties through meaningful hands-on collaboration."
+      },
+      teacher: { zh: "黄美玲老师", ms: "PN. WONG MEI LING", en: "MS. WONG MEI LING" },
+      position: { zh: "环保学会导师", ms: "PENYELARAS KELAB ALAM SEKITAR", en: "ENVIRONMENTAL CLUB COORDINATOR" }
+    },
+
+    // === 常规校级活动 ===
+    pertandingan_muzik: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "校级音乐与歌唱比赛", ms: "PERTANDINGAN MUZIK & NYANYIAN PERINGKAT SEKOLAH", en: "SCHOOL MUSIC & SINGING COMPETITION" },
+      tarikh: "18.06.2026", masa: "8:00 AM – 12:00 PM",
+      penglibatan: { zh: "一至六年级全体学生", ms: "SEMUA MURID TAHUN 1 - 6", en: "ALL STANDARD 1 - 6 STUDENTS" },
+      pengenalan: {
+        zh: "音乐比赛旨在为学生搭建展现独唱、合唱与乐器演奏才华的舞台，陶冶艺术情操，增强台风与自信。",
+        ms: "Pertandingan Muzik dan Nyanyian dianjurkan bagi memberikan platform rasmi kepada murid untuk mengetengahkan bakat seni vokal dan permainan alat muzik.",
+        en: "Provides an official stage for students to showcase vocal talent and musical instrument skills, enriching artistic appreciation."
+      },
+      objektif: {
+        zh: "• 挖掘学生的声乐演唱与乐器演奏天分。\n• 克服怯场心理，培养自信大方的台风与舞台表现力。\n• 丰富校园文化生活，提升学生的审美素养。",
+        ms: "• Mencungkil bakat seni muzik, nyanyian, dan persembahan pentas murid secara berperingkat.\n• Meningkatkan keyakinan diri murid untuk tampil bersembang dan beraksi di atas pentas.\n• Memupuk apresiasi murid terhadap seni muzik tempatan dan antarabangsa.",
+        en: "• To uncover vocal and musical instrument talent among students.\n• To build public performance confidence and stage presence.\n• To enrich school life through music appreciation."
+      },
+      impak: {
+        zh: "• 比赛高潮迭起，涌现出多位极具潜力的音乐小歌手。\n• 学生在舞台上展现出极高的自信与艺术美感。\n• 遴选出了校级活动常态演出献唱团队。",
+        ms: "• Murid memperlihatkan bakat nyanyian dan persembahan alat muzik yang amat berpotensi.\n• Keyakinan diri dan apresiasi seni dalam kalangan murid meningkat secara positif.\n• Pihak sekolah berjaya mengenal pasti wakil murid untuk persembahan acara rasmi.",
+        en: "• Showcase of impressive vocal range and instrument mastery.\n• boosted students' self-confidence and aesthetic appreciation.\n• Identified primary performers for upcoming school ceremonies."
+      },
+      teacher: { zh: "林嘉伟老师", ms: "PN. LIM CHIA WEI", en: "MS. LIM CHIA WEI" },
+      position: { zh: "音乐科小组主任", ms: "KETUA PANITIA MUZIK", en: "HEAD OF MUSIC SUBJECT" }
+    },
+    safe_buli: {
+      school: { zh: "晏斗中华华小 SJK (C) CHUNG HUA RANTAU", ms: "SJK (C) CHUNG HUA RANTAU", en: "SJK (C) CHUNG HUA RANTAU" },
+      title: { zh: "#SAFE 反霸凌填色与宣传画比赛", ms: "PERTANDINGAN MEWARNA ANTI BULI (#SAFE)", en: "#SAFE ANTI-BULLYING COLOURING & POSTER CONTEST" },
+      tarikh: "23.09.2026", masa: "10:35 AM – 12:05 PM",
+      penglibatan: { zh: "全体学生", ms: "SEMUA MURID", en: "ALL STUDENTS" },
+      pengenalan: {
+        zh: "#SAFE 杜绝校园霸凌运动旨在提高学生对肢体、言语及网络霸凌危害的认知，倡导友爱互助的零霸凌校园。",
+        ms: "Program #SAFE Hentikan Buli dianjurkan bagi memberi kesedaran awal kepada murid-murid mengenai bahaya perbuatan buli dan pentingnya mewujudkan persekitaran sekolah yang selamat serta harmoni.",
+        en: "The #SAFE Anti-Bullying Program raises awareness on physical, verbal, and cyberbullying, fostering a safe school culture."
+      },
+      objektif: {
+        zh: "• 树立明确的反霸凌意识，学会保护自己与关爱他人。\n• 明确校园霸凌的严重后果，掌握求助与举报渠道。\n• 营造充满爱心、友善且有安全感的校园氛围。",
+        ms: "• Meningkatkan kesedaran murid tentang isu buli dan kesan buruknya kepada mangsa.\n• Memberi kefahaman tentang jenis-jenis buli seperti buli fizikal, verbal, dan siber.\n• Mendidik murid supaya saling menghormati dan memupuk budaya kasih sayang di sekolah.",
+        en: "• To raise awareness on bullying consequences and mental health.\n• To help students identify bullying forms and reporting channels.\n• To create a compassionate, inclusive, and safe school environment."
+      },
+      impak: {
+        zh: "• 学生提高了自我保护与拒绝霸凌行为的决心。\n• 建立了通畅的辅导求助与教师监督机制。\n• 形成了互帮互助、和谐融洽的校园人际关系。",
+        ms: "• Wujud persekitaran sekolah yang selamat, harmoni dan bebas daripada amalan buli.\n• Murid lebih berani melaporkan sebarang kes buli kepada guru bimbingan dan kaunseling.\n• Memupuk nilai kasih sayang, empati, dan keprihatinan sesama murid secara berterusan.",
+        en: "• Fostered a safer, harmonious, and bully-free environment.\n• Students gained confidence to report incidents to counselors.\n• Cultivated continuous empathy, care, and mutual respect."
+      },
+      teacher: { zh: "甘玉兰老师", ms: "PN. GAN YOK LAN", en: "MS. GAN YOK LAN" },
+      position: { zh: "辅导老师", ms: "GURU BIMBINGAN DAN KAUNSELING", en: "GUIDANCE & COUNSELING TEACHER" }
+    }
+  };
+
+  let imageData = { logo: "", box1: "", box2: "", box3: "", box4: "" };
+
+  // 辅助函数：根据当前语言获取预设字符串
+  function getLangStr(obj) {
+    if (!obj) return "";
+    if (typeof obj === 'string') return obj;
+    return obj[currentLang] || obj['zh'] || obj['ms'] || "";
+  }
+
+  // 动态生成字体下拉选项
+  function populateFontDropdown(lang) {
+    const select = document.getElementById('fontSelect');
+    const selectedVal = select.value || "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+    select.innerHTML = '';
+
+    const fonts = [
+      { val: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", name: { zh: "Segoe UI (现代清晰)", ms: "Segoe UI (Moden & Jelas)", en: "Segoe UI (Modern & Clear)" } },
+      { val: "'KaiTi', 'STKaiti', 'DFKai-SB', '楷体', serif", name: { zh: "楷体 / KaiTi (经典中文)", ms: "KaiTi (Kaligrafi Cina)", en: "KaiTi (Chinese Calligraphy)" } },
+      { val: "Arial, Helvetica, sans-serif", name: { zh: "Arial (标准无衬线)", ms: "Arial (Sans-Serif Standard)", en: "Arial (Standard Sans-Serif)" } },
+      { val: "'Times New Roman', Times, serif", name: { zh: "Times New Roman (正式衬线)", ms: "Times New Roman (Serif Rasmi)", en: "Times New Roman (Formal Serif)" } },
+      { val: "Georgia, serif", name: { zh: "Georgia (典雅衬线)", ms: "Georgia (Serif Elegan)", en: "Georgia (Elegant Serif)" } },
+      { val: "Verdana, Geneva, sans-serif", name: { zh: "Verdana (高辨识度)", ms: "Verdana (Kejelasan Tinggi)", en: "Verdana (High Legibility)" } },
+      { val: "'Comic Sans MS', cursive, sans-serif", name: { zh: "Comic Sans MS (轻松体 / 低年级)", ms: "Comic Sans MS (Santai)", en: "Comic Sans MS (Casual)" } }
+    ];
+
+    fonts.forEach(f => {
+      const opt = document.createElement('option');
+      opt.value = f.val;
+      opt.textContent = f.name[lang] || f.name.zh;
+      if (f.val === selectedVal) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  // 动态生成预设下拉选项（支持分类与三语翻译）
+  function populatePresetDropdown(lang) {
+    const select = document.getElementById('programSelect');
+    const selectedVal = select.value || "tahun_baru_cina";
+    select.innerHTML = '';
+
+    const groups = [
+      {
+        label: { zh: "🎉 节日与文化庆典", ms: "🎉 Sambutan Perayaan & Kebudayaan", en: "🎉 Cultural & Festive Celebrations" },
+        options: [
+          { val: "tahun_baru_cina", text: { zh: "农历新年庆典", ms: "Sambutan Tahun Baru Cina", en: "Chinese New Year Celebration" } },
+          { val: "yuan_xiao", text: { zh: "元宵节（猜灯谜）庆典", ms: "Sambutan Perayaan Chap Goh Mei", en: "Chap Goh Mei Celebration" } },
+          { val: "duan_wu", text: { zh: "端午节（赛龙舟与粽子节）", ms: "Sambutan Pesta Bot Naga & Dumpling", en: "Dragon Boat & Dumpling Festival" } },
+          { val: "zhong_qiu", text: { zh: "中秋节提灯晚会", ms: "Sambutan Pesta Tanglung & Kuih Bulan", en: "Mid-Autumn & Lantern Night" } },
+          { val: "dong_zhi", text: { zh: "冬至（搓汤圆）庆典", ms: "Sambutan Perayaan Dongzhi (Tangyuan)", en: "Dongzhi (Tangyuan) Festival" } }
+        ]
+      },
+      {
+        label: { zh: "⚽ 各类球类与体育竞技比赛", ms: "⚽ Pertandingan Bola & Kejohanan Sukan", en: "⚽ Ball Games & Sports Tournaments" },
+        options: [
+          { val: "lan_qiu", text: { zh: "篮球锦标赛", ms: "Kejohanan Bola Keranjang", en: "Basketball Tournament" } },
+          { val: "yu_mao_qiu", text: { zh: "羽毛球锦标赛", ms: "Kejohanan Badminton", en: "Badminton Championship" } },
+          { val: "pai_qiu", text: { zh: "排球锦标赛", ms: "Kejohanan Bola Tampar", en: "Volleyball Tournament" } },
+          { val: "zu_qiu", text: { zh: "足球/五人足球赛", ms: "Kejohanan Bola Sepak / Futsal", en: "Football / Futsal Match" } },
+          { val: "gao_er_fu", text: { zh: "高尔夫球体验与技能赛", ms: "Pertandingan & Cabaran Sukan Golf", en: "Golf Skills Challenge" } },
+          { val: "ying_shi_lan_qiu", text: { zh: "英式篮球（Netball）锦标赛", ms: "Kejohanan Bola Jaring", en: "Netball Championship" } },
+          { val: "ti_cao", text: { zh: "体操与竞技体操表演赛", ms: "Pertandingan & Kejohanan Gimnastik", en: "Gymnastics Competition" } },
+          { val: "sai_pao", text: { zh: "田径赛跑 / 短跑接力赛", ms: "Kejohanan Acara Larian & Sprint", en: "Track & Sprinting Championship" } },
+          { val: "diu_qian_qiu", text: { zh: "丢铅球（Shot Put）竞技赛", ms: "Pertandingan Lontar Peluru", en: "Shot Put Field Event" } }
+        ]
+      },
+      {
+        label: { zh: "🎨 艺术、学术与倡议比赛", ms: "🎨 Pertandingan Seni, Akademik & Kempen", en: "🎨 Arts, Academic & Campaign Contests" },
+        options: [
+          { val: "anti_dadah_rokok", text: { zh: "反毒反香烟填色及画海报比赛", ms: "Pertandingan Poster Anti-Dadah & Anti-Rokok", en: "Anti-Drug & Anti-Smoking Poster Contest" } },
+          { val: "anti_aedes", text: { zh: "反黑斑蚊/防骨痛热症海报比赛", ms: "Pertandingan Poster Cegah Denggi (#Anti-Aedes)", en: "Anti-Aedes / Dengue Poster Contest" } },
+          { val: "lantern_making", text: { zh: "中秋节制作环保灯笼比赛", ms: "Pertandingan Membuat Tanglung Mesra Alam", en: "Eco Lantern Making Contest" } },
+          { val: "pertandingan_muzik", text: { zh: "音乐与歌唱比赛", ms: "Pertandingan Muzik & Nyanyian", en: "Music & Singing Competition" } },
+          { val: "safe_buli", text: { zh: "#SAFE 反霸凌填色与海报比赛", ms: "Pertandingan Anti Buli #SAFE", en: "#SAFE Anti-Bullying Contest" } }
+        ]
+      }
+    ];
+
+    groups.forEach(g => {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = g.label[lang] || g.label.zh;
+      g.options.forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.val;
+        opt.textContent = o.text[lang] || o.text.zh;
+        if (o.val === selectedVal) opt.selected = true;
+        optgroup.appendChild(opt);
+      });
+      select.appendChild(optgroup);
+    });
+
+    const customOpt = document.createElement('option');
+    customOpt.value = "custom";
+    const customText = { zh: "✨ 自定义活动", ms: "✨ Program Khas (Custom)", en: "✨ Custom Program" };
+    customOpt.textContent = customText[lang] || customText.zh;
+    if (selectedVal === "custom") customOpt.selected = true;
+    select.appendChild(customOpt);
+  }
+
+  function updateFont(fontFamily) {
+    document.documentElement.style.setProperty('--report-font', fontFamily);
+  }
+
+  // 切换语言主函数（全面动态重置 UI 与文本）
+  function switchLanguage(lang) {
+    currentLang = lang;
+    const dict = i18n[lang] || i18n['zh'];
+    
+    document.getElementById('ui_appTitle').innerText = dict.appTitle;
+    document.getElementById('ui_btnSave').innerText = dict.btnSave;
+    document.getElementById('ui_btnLoad').innerText = dict.btnLoad;
+    document.getElementById('ui_btnReset').innerText = dict.btnReset;
+    document.getElementById('ui_btnPrint').innerText = dict.btnPrint;
+    
+    document.getElementById('ui_secFont').innerText = dict.secFont;
+    document.getElementById('ui_lblFont').innerText = dict.lblFont;
+
+    document.getElementById('ui_secPreset').innerText = dict.secPreset;
+    document.getElementById('ui_lblPreset').innerText = dict.lblPreset;
+    
+    document.getElementById('ui_secSchool').innerText = dict.secSchool;
+    document.getElementById('ui_lblLogo').innerText = dict.lblLogo;
+    document.getElementById('ui_lblSchoolName').innerText = dict.lblSchoolName;
+    
+    document.getElementById('ui_secDetails').innerText = dict.secDetails;
+    document.getElementById('ui_lblTitle').innerText = dict.lblTitle;
+    document.getElementById('ui_lblDate').innerText = dict.lblDate;
+    document.getElementById('ui_lblTime').innerText = dict.lblTime;
+    document.getElementById('ui_lblInvolvement').innerText = dict.lblInvolvement;
+    
+    document.getElementById('ui_secObjImp').innerText = dict.secObjImp;
+    document.getElementById('ui_lblPengenalan').innerText = dict.lblPengenalan;
+    document.getElementById('ui_lblObj').innerText = dict.lblObj;
+    document.getElementById('ui_lblImp').innerText = dict.lblImp;
+    
+    document.getElementById('ui_secPhotos').innerText = dict.secPhotos;
+    const photoWords = document.querySelectorAll('.ui_lblPhotoWord');
+    photoWords.forEach(el => el.innerText = dict.lblPhoto);
+    
+    document.getElementById('ui_secTeacher').innerText = dict.secTeacher;
+    document.getElementById('ui_lblTeacherName').innerText = dict.lblTeacherName;
+    document.getElementById('ui_lblPosition').innerText = dict.lblPosition;
+
+    document.getElementById('ui_headerPengenalan').innerText = dict.headerPengenalan;
+    document.getElementById('ui_headerObjektif').innerText = dict.headerObjektif;
+    document.getElementById('ui_headerImpak').innerText = dict.headerImpak;
+    document.getElementById('ui_headerPelapor').innerText = dict.headerPelapor;
+
+    document.getElementById('ui_tblProgram').innerText = dict.tblProgram;
+    document.getElementById('ui_tblDate').innerText = dict.tblDate;
+    document.getElementById('ui_tblTime').innerText = dict.tblTime;
+    document.getElementById('ui_tblTarget').innerText = dict.tblTarget;
+
+    // 重新生成选项
+    populateFontDropdown(lang);
+    populatePresetDropdown(lang);
+
+    // 自动用新语言重置预设文本
+    autoFillProgram();
+  }
+
+  // 根据当前选择的预设与语言自动填充表单内容
+  function autoFillProgram() {
+    const val = document.getElementById('programSelect').value;
+    if (val && presets[val]) {
+      const p = presets[val];
+      document.getElementById('inputSchoolName').value = getLangStr(p.school);
+      document.getElementById('inputTitle').value = getLangStr(p.title);
+      document.getElementById('inputTarikh').value = p.tarikh;
+      document.getElementById('inputMasa').value = p.masa;
+      document.getElementById('inputPenglibatan').value = getLangStr(p.penglibatan);
+      document.getElementById('inputPengenalan').value = getLangStr(p.pengenalan);
+      document.getElementById('inputObjektif').value = getLangStr(p.objektif);
+      document.getElementById('inputImpak').value = getLangStr(p.impak);
+      document.getElementById('inputTeacherName').value = getLangStr(p.teacher);
+      document.getElementById('inputPosition').value = getLangStr(p.position);
+    } else if (val === 'custom') {
+      document.getElementById('inputTitle').value = "";
+      document.getElementById('inputTarikh').value = "";
+      document.getElementById('inputMasa').value = "";
+      document.getElementById('inputPenglibatan').value = "";
+      document.getElementById('inputPengenalan').value = "";
+      document.getElementById('inputObjektif').value = "";
+      document.getElementById('inputImpak').value = "";
+    }
+    updateView();
+  }
+
+  function updateView() {
+    document.getElementById('viewSchoolName').innerText = document.getElementById('inputSchoolName').value.toUpperCase() || "NAMA SEKOLAH";
+    document.getElementById('viewTitle').innerText = document.getElementById('inputTitle').value.toUpperCase() || "-";
+    document.getElementById('viewTarikh').innerText = document.getElementById('inputTarikh').value || "-";
+    document.getElementById('viewMasa').innerText = document.getElementById('inputMasa').value || "-";
+    document.getElementById('viewPenglibatan').innerText = document.getElementById('inputPenglibatan').value.toUpperCase() || "-";
+    document.getElementById('viewPengenalan').innerText = document.getElementById('inputPengenalan').value || "-";
+    document.getElementById('viewObjektif').innerText = document.getElementById('inputObjektif').value || "-";
+    document.getElementById('viewImpak').innerText = document.getElementById('inputImpak').value || "-";
+    document.getElementById('viewTeacherName').innerText = document.getElementById('inputTeacherName').value.toUpperCase() || "NAMA GURU";
+    document.getElementById('viewPosition').innerText = document.getElementById('inputPosition').value.toUpperCase() || "JAWATAN GURU";
+  }
+
+  function loadLogo(event) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imageData.logo = e.target.result;
+        document.getElementById('logoBox').innerHTML = `<img src="${e.target.result}" alt="Logo">`;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function loadPhoto(event, index) {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        imageData[`box${index}`] = e.target.result;
+        document.getElementById(`box${index}`).innerHTML = `<img src="${e.target.result}" alt="Gambar ${index}">`;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function saveDraft() {
+    const dict = i18n[currentLang] || i18n['zh'];
+    const draft = {
+      font: document.getElementById('fontSelect').value,
+      school: document.getElementById('inputSchoolName').value,
+      title: document.getElementById('inputTitle').value,
+      tarikh: document.getElementById('inputTarikh').value,
+      masa: document.getElementById('inputMasa').value,
+      penglibatan: document.getElementById('inputPenglibatan').value,
+      pengenalan: document.getElementById('inputPengenalan').value,
+      objektif: document.getElementById('inputObjektif').value,
+      impak: document.getElementById('inputImpak').value,
+      teacher: document.getElementById('inputTeacherName').value,
+      position: document.getElementById('inputPosition').value,
+      images: imageData
+    };
+    try {
+      localStorage.setItem('opr_draft', JSON.stringify(draft));
+      alert(dict.msgSaveSuccess);
+    } catch (e) {
+      alert(dict.msgSaveError);
+    }
+  }
+
+  function loadDraft() {
+    const dict = i18n[currentLang] || i18n['zh'];
+    const saved = localStorage.getItem('opr_draft');
+    if (saved) {
+      const draft = JSON.parse(saved);
+      if (draft.font) {
+        document.getElementById('fontSelect').value = draft.font;
+        updateFont(draft.font);
+      }
+      document.getElementById('inputSchoolName').value = draft.school || "";
+      document.getElementById('inputTitle').value = draft.title || "";
+      document.getElementById('inputTarikh').value = draft.tarikh || "";
+      document.getElementById('inputMasa').value = draft.masa || "";
+      document.getElementById('inputPenglibatan').value = draft.penglibatan || "";
+      document.getElementById('inputPengenalan').value = draft.pengenalan || "";
+      document.getElementById('inputObjektif').value = draft.objektif || "";
+      document.getElementById('inputImpak').value = draft.impak || "";
+      document.getElementById('inputTeacherName').value = draft.teacher || "";
+      document.getElementById('inputPosition').value = draft.position || "";
+      
+      if (draft.images) {
+        imageData = draft.images;
+        if (imageData.logo) document.getElementById('logoBox').innerHTML = `<img src="${imageData.logo}" alt="Logo">`;
+        for (let i = 1; i <= 4; i++) {
+          if (imageData[`box${i}`]) {
+            document.getElementById(`box${i}`).innerHTML = `<img src="${imageData[`box${i}`]}" alt="Gambar ${i}">`;
+          }
+        }
+      }
+      updateView();
+      alert(dict.msgLoadSuccess);
+    } else {
+      alert(dict.msgLoadEmpty);
+    }
+  }
+
+  function resetForm() {
+    const dict = i18n[currentLang] || i18n['zh'];
+    if (confirm(dict.msgConfirmReset)) {
+      document.getElementById('programSelect').value = 'tahun_baru_cina';
+      document.getElementById('fontSelect').selectedIndex = 0;
+      updateFont(document.getElementById('fontSelect').value);
+      imageData = { logo: "", box1: "", box2: "", box3: "", box4: "" };
+      const phWord = dict.lblPhoto;
+      document.getElementById('logoBox').innerHTML = `<span style="font-size: 7pt; color: #888;">[ LOGO ]</span>`;
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`box${i}`).innerHTML = `<span class="photo-ph">[ ${phWord} ${i} ]</span>`;
+      }
+      autoFillProgram();
+    }
+  }
+
+  window.onload = function() {
+    switchLanguage('zh');
+  };
+</script>
+
+</body>
+</html>
